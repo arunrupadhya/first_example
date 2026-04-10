@@ -1,8 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+import ChatWidget from './ChatWidget';
 import {
   Container,
   Box,
@@ -18,18 +17,13 @@ import {
   ListItemIcon,
   ListItemButton,
   Divider,
-  Badge,
   Switch,
-  FormControlLabel,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   Chip,
   Paper,
-  CircularProgress,
-  Snackbar,
-  Alert,
-  IconButton
+  CircularProgress
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -42,29 +36,22 @@ import {
   Security,
   Analytics,
   ContactSupport,
-  Edit as EditIcon,
-  Chat as ChatIcon
+  Edit as EditIcon
 } from '@mui/icons-material';
+
+interface TabItem {
+  id: string;
+  label: string;
+  icon: ReactElement;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [snackbar, setSnackbar] = useState({ open: false, sender: '', content: '', key: 0 });
   const token = localStorage.getItem('token');
   const currentUser = localStorage.getItem('username');
-
-  // Fetch initial unread count
-  const loadUnreadCount = useCallback(async () => {
-    try {
-      const res = await axios.get('/api/messages/unread', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUnreadCount(res.data.count || 0);
-    } catch { /* ignore */ }
-  }, [token]);
 
   useEffect(() => {
     axios.get('/api/dashboard', {
@@ -84,40 +71,7 @@ const Dashboard = () => {
     }).finally(() => {
       setLoading(false);
     });
-    loadUnreadCount();
-  }, [token, loadUnreadCount]);
-
-  // WebSocket connection for real-time notifications
-  useEffect(() => {
-    if (!token) return;
-
-    const client = new Client({
-      webSocketFactory: () => new SockJS('/ws'),
-      connectHeaders: { Authorization: `Bearer ${token}` },
-      reconnectDelay: 5000,
-      onConnect: () => {
-        client.subscribe('/user/queue/messages', (message) => {
-          const msg = JSON.parse(message.body);
-          if (msg.senderUsername !== currentUser) {
-            setUnreadCount(prev => prev + 1);
-            // Close existing snackbar first, then open new one
-            setSnackbar(prev => ({ ...prev, open: false }));
-            setTimeout(() => {
-              setSnackbar({
-                open: true,
-                sender: msg.senderUsername,
-                content: msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content,
-                key: Date.now()
-              });
-            }, 100);
-          }
-        });
-      }
-    });
-
-    client.activate();
-    return () => { if (client.active) client.deactivate(); };
-  }, [token, currentUser]);
+  }, [token, navigate]);
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -125,7 +79,7 @@ const Dashboard = () => {
     window.location.href = '/login';
   };
 
-  const tabs = [
+  const tabs: TabItem[] = [
     { id: 'overview', label: 'Overview', icon: <DashboardIcon /> },
     { id: 'profile', label: 'Profile', icon: <Person /> },
     { id: 'settings', label: 'Settings', icon: <SettingsIcon /> },
@@ -242,7 +196,6 @@ const Dashboard = () => {
                     </Typography>
                   </Box>
                 </ListItem>
-
               </List>
               <Button
                 variant="contained"
@@ -432,18 +385,6 @@ const Dashboard = () => {
           </Typography>
           <Button
             color="inherit"
-            startIcon={
-              <Badge badgeContent={unreadCount} color="error" max={99}>
-                <ChatIcon />
-              </Badge>
-            }
-            onClick={() => navigate('/chat')}
-            sx={{ textTransform: 'none', fontSize: 14, mr: 2 }}
-          >
-            Messenger
-          </Button>
-          <Button
-            color="inherit"
             endIcon={<LogoutIcon />}
             onClick={logout}
             sx={{ textTransform: 'none', fontSize: 14 }}
@@ -501,36 +442,7 @@ const Dashboard = () => {
           </Grid>
         </Grid>
       </Container>
-      {/* Message notification toast */}
-      <Snackbar
-        key={snackbar.key}
-        open={snackbar.open}
-        autoHideDuration={5000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-          severity="info"
-          variant="filled"
-          icon={<ChatIcon />}
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              onClick={() => {
-                setSnackbar(prev => ({ ...prev, open: false }));
-                navigate('/chat');
-              }}
-            >
-              Open
-            </Button>
-          }
-          sx={{ width: '100%', cursor: 'pointer' }}
-        >
-          <strong>{snackbar.sender}</strong>: {snackbar.content}
-        </Alert>
-      </Snackbar>
+      <ChatWidget token={token} currentUser={currentUser} />
     </Box>
   );
 };
