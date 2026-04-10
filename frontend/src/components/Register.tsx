@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, FormEvent, MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -36,11 +36,11 @@ const Register = () => {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  const handleMouseDownPassword = (event) => {
+  const handleMouseDownPassword = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -64,8 +64,12 @@ const Register = () => {
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Username may already exist.');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || 'Registration failed. Username may already exist.');
+      } else {
+        setError('Registration failed. Username may already exist.');
+      }
     } finally {
       setLoading(false);
     }
