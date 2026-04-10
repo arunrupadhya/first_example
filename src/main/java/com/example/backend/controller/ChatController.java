@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @RestController
@@ -64,26 +65,33 @@ public class ChatController {
     }
 
     @PostMapping("/send")
+    @SuppressWarnings("null")
     public ResponseEntity<MessageDto> sendMessage(@Valid @RequestBody SendMessageRequest request, Principal principal) {
-        MessageDto msg = messageService.sendMessage(principal.getName(), request.getRecipientUsername(), request.getContent());
-        messagingTemplate.convertAndSendToUser(request.getRecipientUsername(), "/queue/messages", msg);
+        String recipientUsername = Objects.requireNonNull(request.getRecipientUsername());
+        MessageDto msg = messageService.sendMessage(principal.getName(), recipientUsername, request.getContent());
+        messagingTemplate.convertAndSendToUser(recipientUsername, "/queue/messages", msg);
         return ResponseEntity.ok(msg);
     }
 
     @MessageMapping("/chat.send")
+    @SuppressWarnings("null")
     public void handleWebSocketMessage(@Payload SendMessageRequest request, Principal principal) {
-        MessageDto msg = messageService.sendMessage(principal.getName(), request.getRecipientUsername(), request.getContent());
-        messagingTemplate.convertAndSendToUser(request.getRecipientUsername(), "/queue/messages", msg);
-        messagingTemplate.convertAndSendToUser(principal.getName(), "/queue/messages", msg);
+        String recipientUsername = Objects.requireNonNull(request.getRecipientUsername());
+        String senderName = Objects.requireNonNull(principal.getName());
+        MessageDto msg = messageService.sendMessage(senderName, recipientUsername, request.getContent());
+        messagingTemplate.convertAndSendToUser(recipientUsername, "/queue/messages", msg);
+        messagingTemplate.convertAndSendToUser(senderName, "/queue/messages", msg);
     }
 
     @MessageMapping("/chat.typing")
+    @SuppressWarnings("null")
     public void handleTyping(@Payload Map<String, Object> payload, Principal principal) {
         String recipient = (String) payload.get("recipientUsername");
         boolean typing = Boolean.TRUE.equals(payload.get("typing"));
         if (recipient != null && principal != null) {
+            String username = Objects.requireNonNull(principal.getName());
             messagingTemplate.convertAndSendToUser(recipient, "/queue/typing",
-                    Map.of("username", principal.getName(), "typing", typing));
+                    Map.of("username", username, "typing", typing));
         }
     }
 }
