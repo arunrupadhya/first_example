@@ -45,7 +45,8 @@ public class WebSocketEventListener {
         return onlineUsers;
     }
 
+    @SuppressWarnings("null")
     private void broadcastOnlineUsers() {
-        messagingTemplate.convertAndSend("/topic/online", onlineUsers);
+        messagingTemplate.convertAndSend("/topic/online", Set.copyOf(onlineUsers));
     }
 }
