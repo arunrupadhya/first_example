@@ -59,7 +59,12 @@ public class TechStackDataInitializer implements CommandLineRunner {
             ts("Linux", "Tools"), ts("Agile/Scrum", "Tools")
         );
 
-        techStackRepository.saveAll(stacks);
+        if (stacks != null && !stacks.isEmpty()) {
+            techStackRepository.saveAll(stacks);
+        } else {
+            System.out.println("No tech stacks to seed.");
+            throw new RuntimeException("Tech stack list is empty. Seeding failed.");
+        }
     }
 
     private TechStack ts(String name, String category) {
