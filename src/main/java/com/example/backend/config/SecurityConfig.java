@@ -41,8 +41,10 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico").permitAll()
-                .requestMatchers("/login", "/register", "/dashboard", "/chat").permitAll()
+                .requestMatchers("/api/photo/{username}").permitAll()
+                .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/vite.svg").permitAll()
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/login", "/register", "/dashboard", "/chat", "/send-email").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));

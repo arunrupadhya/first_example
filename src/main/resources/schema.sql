@@ -7,6 +7,7 @@
 DROP TABLE IF EXISTS user_roles CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
+DROP TABLE IF EXISTS tech_stacks CASCADE;
 
 -- ============================================================
 -- 1. USERS TABLE
@@ -44,11 +45,23 @@ CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
 CREATE INDEX idx_user_roles_role_id ON user_roles(role_id);
 
 -- ============================================================
+-- 4. TECH_STACKS TABLE (Static lookup for IT tech stacks)
+-- ============================================================
+CREATE TABLE tech_stacks (
+    id          BIGSERIAL       PRIMARY KEY,
+    name        VARCHAR(100)    NOT NULL UNIQUE,
+    category    VARCHAR(50)     NOT NULL
+);
+
+CREATE INDEX idx_tech_stacks_category ON tech_stacks(category);
+
+-- ============================================================
 -- SEED DATA: Roles
 -- ============================================================
 INSERT INTO roles (name) VALUES
     ('ROLE_USER'),
-    ('ROLE_ADMIN');
+    ('ROLE_ADMIN'),
+    ('ROLE_CANDIDATE');
 
 -- ============================================================
 -- SEED DATA: Sample Users
@@ -70,3 +83,84 @@ INSERT INTO user_roles (user_id, role_id) VALUES
     ((SELECT id FROM users WHERE username = 'admin'), (SELECT id FROM roles WHERE name = 'ROLE_USER')),
     ((SELECT id FROM users WHERE username = 'user1'), (SELECT id FROM roles WHERE name = 'ROLE_USER')),
     ((SELECT id FROM users WHERE username = 'demo'),  (SELECT id FROM roles WHERE name = 'ROLE_USER'));
+
+-- ============================================================
+-- SEED DATA: IT Tech Stacks
+-- ============================================================
+INSERT INTO tech_stacks (name, category) VALUES
+    -- Programming Languages
+    ('Java', 'Languages'),
+    ('Python', 'Languages'),
+    ('JavaScript', 'Languages'),
+    ('TypeScript', 'Languages'),
+    ('C#', 'Languages'),
+    ('C++', 'Languages'),
+    ('Go', 'Languages'),
+    ('Rust', 'Languages'),
+    ('Ruby', 'Languages'),
+    ('PHP', 'Languages'),
+    ('Swift', 'Languages'),
+    ('Kotlin', 'Languages'),
+    ('Scala', 'Languages'),
+    ('R', 'Languages'),
+    -- Frontend Frameworks
+    ('React', 'Frontend'),
+    ('Angular', 'Frontend'),
+    ('Vue.js', 'Frontend'),
+    ('Next.js', 'Frontend'),
+    ('Svelte', 'Frontend'),
+    ('HTML/CSS', 'Frontend'),
+    ('Tailwind CSS', 'Frontend'),
+    ('Bootstrap', 'Frontend'),
+    -- Backend Frameworks
+    ('Spring Boot', 'Backend'),
+    ('Node.js', 'Backend'),
+    ('Express.js', 'Backend'),
+    ('Django', 'Backend'),
+    ('Flask', 'Backend'),
+    ('FastAPI', 'Backend'),
+    ('.NET Core', 'Backend'),
+    ('Ruby on Rails', 'Backend'),
+    ('NestJS', 'Backend'),
+    -- Databases
+    ('PostgreSQL', 'Databases'),
+    ('MySQL', 'Databases'),
+    ('MongoDB', 'Databases'),
+    ('Redis', 'Databases'),
+    ('Oracle', 'Databases'),
+    ('SQL Server', 'Databases'),
+    ('DynamoDB', 'Databases'),
+    ('Cassandra', 'Databases'),
+    ('Elasticsearch', 'Databases'),
+    -- Cloud & DevOps
+    ('AWS', 'Cloud & DevOps'),
+    ('Azure', 'Cloud & DevOps'),
+    ('GCP', 'Cloud & DevOps'),
+    ('Docker', 'Cloud & DevOps'),
+    ('Kubernetes', 'Cloud & DevOps'),
+    ('Terraform', 'Cloud & DevOps'),
+    ('Jenkins', 'Cloud & DevOps'),
+    ('GitHub Actions', 'Cloud & DevOps'),
+    ('CI/CD', 'Cloud & DevOps'),
+    ('Ansible', 'Cloud & DevOps'),
+    -- Data & AI/ML
+    ('Apache Spark', 'Data & AI/ML'),
+    ('TensorFlow', 'Data & AI/ML'),
+    ('PyTorch', 'Data & AI/ML'),
+    ('Pandas', 'Data & AI/ML'),
+    ('Apache Kafka', 'Data & AI/ML'),
+    ('Hadoop', 'Data & AI/ML'),
+    -- Mobile
+    ('React Native', 'Mobile'),
+    ('Flutter', 'Mobile'),
+    ('Android (Java/Kotlin)', 'Mobile'),
+    ('iOS (Swift)', 'Mobile'),
+    -- Tools & Others
+    ('Git', 'Tools'),
+    ('REST APIs', 'Tools'),
+    ('GraphQL', 'Tools'),
+    ('Microservices', 'Tools'),
+    ('RabbitMQ', 'Tools'),
+    ('gRPC', 'Tools'),
+    ('Linux', 'Tools'),
+    ('Agile/Scrum', 'Tools');

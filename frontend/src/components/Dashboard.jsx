@@ -1,8 +1,7 @@
-import { useEffect, useState, useCallback, ReactElement } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ChatWidget from './ChatWidget';
-import CameraCapture from './CameraCapture';
 import {
   Container,
   Box,
@@ -19,6 +18,7 @@ import {
   ListItemButton,
   Divider,
   Switch,
+  FormControlLabel,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -36,31 +36,18 @@ import {
   Notifications,
   Security,
   Analytics,
-  ContactSupport
+  ContactSupport,
+  Edit as EditIcon,
+  Email as EmailIcon
 } from '@mui/icons-material';
-
-interface TabItem {
-  id: string;
-  label: string;
-  icon: ReactElement;
-}
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [photoUrl, setPhotoUrl] = useState('');
   const token = localStorage.getItem('token');
   const currentUser = localStorage.getItem('username');
-
-  useEffect(() => {
-    if (currentUser) {
-      axios.get(`/api/photo/${currentUser}`)
-        .then(res => { if (res.data.photoUrl) setPhotoUrl(res.data.photoUrl); })
-        .catch(() => {});
-    }
-  }, [currentUser]);
 
   useEffect(() => {
     axios.get('/api/dashboard', {
@@ -88,7 +75,7 @@ const Dashboard = () => {
     window.location.href = '/login';
   };
 
-  const tabs: TabItem[] = [
+  const tabs = [
     { id: 'overview', label: 'Overview', icon: <DashboardIcon /> },
     { id: 'profile', label: 'Profile', icon: <Person /> },
     { id: 'settings', label: 'Settings', icon: <SettingsIcon /> },
@@ -172,18 +159,6 @@ const Dashboard = () => {
               User Profile
             </Typography>
             <Paper elevation={0} sx={{ p: 3, backgroundColor: '#f8f9fa' }}>
-              {/* Photo Section */}
-              <Box sx={{ mb: 3, p: 3, backgroundColor: '#fff', borderRadius: 2, textAlign: 'center' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#2c3e50', mb: 2 }}>
-                  Profile Photo
-                </Typography>
-                <CameraCapture
-                  token={token}
-                  username={currentUser}
-                  photoUrl={photoUrl}
-                  onPhotoUpdated={setPhotoUrl}
-                />
-              </Box>
               <List disablePadding>
                 <ListItem sx={{ py: 2 }}>
                   <Box sx={{ width: '100%' }}>
@@ -217,7 +192,19 @@ const Dashboard = () => {
                     </Typography>
                   </Box>
                 </ListItem>
+
               </List>
+              <Button
+                variant="contained"
+                endIcon={<EditIcon />}
+                sx={{
+                  mt: 3,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  textTransform: 'none'
+                }}
+              >
+                Edit Profile
+              </Button>
             </Paper>
           </Box>
         );
@@ -395,6 +382,14 @@ const Dashboard = () => {
           </Typography>
           <Button
             color="inherit"
+            startIcon={<EmailIcon />}
+            onClick={() => navigate('/send-email')}
+            sx={{ textTransform: 'none', fontSize: 14, mr: 1 }}
+          >
+            Send Email
+          </Button>
+          <Button
+            color="inherit"
             endIcon={<LogoutIcon />}
             onClick={logout}
             sx={{ textTransform: 'none', fontSize: 14 }}
@@ -452,7 +447,7 @@ const Dashboard = () => {
           </Grid>
         </Grid>
       </Container>
-      {!loading && token && <ChatWidget token={token} currentUser={currentUser} />}
+      <ChatWidget token={token} currentUser={currentUser} />
     </Box>
   );
 };

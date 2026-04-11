@@ -17,8 +17,9 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
            "ORDER BY m.timestamp ASC")
     List<Message> findConversation(@Param("user1") User user1, @Param("user2") User user2);
 
-    @Query("SELECT DISTINCT CASE WHEN m.sender = :user THEN m.recipient ELSE m.sender END " +
-           "FROM Message m WHERE m.sender = :user OR m.recipient = :user")
+    @Query("SELECT DISTINCT u FROM User u WHERE u IN " +
+           "(SELECT m.recipient FROM Message m WHERE m.sender = :user) OR u IN " +
+           "(SELECT m.sender FROM Message m WHERE m.recipient = :user)")
     List<User> findConversationPartners(@Param("user") User user);
 
     @Query("SELECT COUNT(m) FROM Message m WHERE m.recipient = :user AND m.read = false")

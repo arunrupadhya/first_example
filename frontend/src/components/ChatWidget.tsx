@@ -41,8 +41,10 @@ const ChatWidget = ({ token, currentUser, onUnreadChange }: ChatWidgetProps) => 
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
   const selectedUserRef = useRef<string | null>(null);
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
 
-  const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+  const getAuthHeader = () => ({ headers: { Authorization: `Bearer ${tokenRef.current}` } });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,8 +59,9 @@ const ChatWidget = ({ token, currentUser, onUnreadChange }: ChatWidgetProps) => 
   }, [unreadCounts, onUnreadChange]);
 
   const loadUsers = useCallback(async () => {
+    if (!tokenRef.current) return;
     try {
-      const res = await axios.get<string[]>('/api/messages/users', authHeader);
+      const res = await axios.get<string[]>('/api/messages/users', getAuthHeader());
       setUsers(res.data);
     } catch (err) {
       console.error('Failed to load users', err);
@@ -66,12 +69,13 @@ const ChatWidget = ({ token, currentUser, onUnreadChange }: ChatWidgetProps) => 
   }, []);
 
   const loadUnreadCounts = useCallback(async () => {
+    if (!tokenRef.current) return;
     try {
-      const partners = await axios.get<string[]>('/api/messages/conversations', authHeader);
+      const partners = await axios.get<string[]>('/api/messages/conversations', getAuthHeader());
       const counts: Record<string, number> = {};
       for (const partner of partners.data) {
         try {
-          const conv = await axios.get<Message[]>(`/api/messages/conversation/${partner}`, authHeader);
+          const conv = await axios.get<Message[]>(`/api/messages/conversation/${partner}`, getAuthHeader());
           const unread = conv.data.filter(m => m.senderUsername === partner && !m.read).length;
           if (unread > 0) counts[partner] = unread;
         } catch { /* ignore */ }
@@ -83,17 +87,18 @@ const ChatWidget = ({ token, currentUser, onUnreadChange }: ChatWidgetProps) => 
   }, []);
 
   const loadOnlineUsers = useCallback(async () => {
+    if (!tokenRef.current) return;
     try {
-      const res = await axios.get<string[]>('/api/messages/online', authHeader);
+      const res = await axios.get<string[]>('/api/messages/online', getAuthHeader());
       setOnlineUsers(new Set(res.data));
     } catch { /* ignore */ }
   }, []);
 
   const loadConversation = useCallback(async (username: string) => {
     try {
-      const res = await axios.get<Message[]>(`/api/messages/conversation/${username}`, authHeader);
+      const res = await axios.get<Message[]>(`/api/messages/conversation/${username}`, getAuthHeader());
       setMessages(res.data);
-      await axios.post(`/api/messages/read/${username}`, {}, authHeader);
+      await axios.post(`/api/messages/read/${username}`, {}, getAuthHeader());
       setUnreadCounts(prev => {
         const updated = { ...prev };
         delete updated[username];
@@ -217,7 +222,7 @@ const ChatWidget = ({ token, currentUser, onUnreadChange }: ChatWidgetProps) => 
       const res = await axios.post<Message>('/api/messages/send', {
         recipientUsername: selectedUser,
         content: newMessage.trim()
-      }, authHeader);
+      }, getAuthHeader());
       setMessages(prev => [...prev, res.data]);
       setNewMessage('');
     } catch (err) {
