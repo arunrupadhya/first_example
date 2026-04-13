@@ -41,8 +41,8 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
             );
             User user = userService.findByUsername(authRequest.getUsername());
-            String token = jwtUtil.generateToken(user.getUsername());
-            return ResponseEntity.ok(new AuthResponse(token));
+            String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
+            return ResponseEntity.ok(new AuthResponse(token, user.getRole()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Invalid credentials");
         }

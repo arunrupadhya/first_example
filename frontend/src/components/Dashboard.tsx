@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import ChatWidget from './ChatWidget';
 import CameraCapture from './CameraCapture';
 import {
   Container,
@@ -24,7 +23,15 @@ import {
   AccordionDetails,
   Chip,
   Paper,
-  CircularProgress
+  CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -36,7 +43,11 @@ import {
   Notifications,
   Security,
   Analytics,
-  ContactSupport
+  ContactSupport,
+  People,
+  Search as SearchIcon,
+  CheckCircle,
+  Cancel
 } from '@mui/icons-material';
 
 interface TabItem {
@@ -45,14 +56,31 @@ interface TabItem {
   icon: ReactElement;
 }
 
+interface CandidateSummary {
+  id: number;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  email: string;
+  createdAt: string;
+  hasPhoto: boolean;
+  hasVideo: boolean;
+  techStacks: string[];
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const token = localStorage.getItem('token');
   const currentUser = localStorage.getItem('username');
+  const userRole = localStorage.getItem('role') || 'EMPLOYEE';
+  const isHrOrPractice = userRole === 'HR' || userRole === 'PRACTICE';
 
   useEffect(() => {
     if (currentUser) {
@@ -85,11 +113,31 @@ const Dashboard = () => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('role');
     window.location.href = '/login';
   };
 
+  useEffect(() => {
+    if (isHrOrPractice && activeTab === 'candidates') {
+      setCandidatesLoading(true);
+      axios.get('/api/candidates', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => setCandidates(res.data))
+        .catch(() => setCandidates([]))
+        .finally(() => setCandidatesLoading(false));
+    }
+  }, [activeTab, isHrOrPractice, token]);
+
+  const filteredCandidates = candidates.filter(c => {
+    const name = [c.firstName, c.middleName, c.lastName].filter(Boolean).join(' ').toLowerCase();
+    const q = searchQuery.toLowerCase();
+    return name.includes(q) || c.email.toLowerCase().includes(q);
+  });
+
   const tabs: TabItem[] = [
     { id: 'overview', label: 'Overview', icon: <DashboardIcon /> },
+    ...(isHrOrPractice ? [{ id: 'candidates', label: 'Candidates', icon: <People /> }] : []),
     { id: 'profile', label: 'Profile', icon: <Person /> },
     { id: 'settings', label: 'Settings', icon: <SettingsIcon /> },
     { id: 'help', label: 'Help', icon: <HelpIcon /> }
@@ -161,6 +209,96 @@ const Dashboard = () => {
                   </Grid>
                 </Grid>
               </>
+            )}
+          </Box>
+        );
+
+      case 'candidates':
+        return (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
+              Candidate Applications
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              sx={{ mb: 3 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: '#999' }} />
+                  </InputAdornment>
+                )
+              }}
+            />
+            {candidatesLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : filteredCandidates.length === 0 ? (
+              <Paper elevation={0} sx={{ p: 4, textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                <Typography variant="body1" sx={{ color: '#999' }}>
+                  {searchQuery ? 'No candidates match your search.' : 'No candidate applications yet.'}
+                </Typography>
+              </Paper>
+            ) : (
+              <TableContainer component={Paper} elevation={0}>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: '#f8f9fa' }}>
+                      <TableCell sx={{ fontWeight: 700 }}>#</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Tech Stacks</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }} align="center">Photo</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }} align="center">Video</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Applied On</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredCandidates.map((c, idx) => (
+                      <TableRow
+                        key={c.id}
+                        hover
+                        sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'rgba(102, 126, 234, 0.04)' } }}
+                        onClick={() => navigate(`/candidate-profile/${c.id}`)}
+                      >
+                        <TableCell>{idx + 1}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#667eea' }}>
+                            {[c.firstName, c.middleName, c.lastName].filter(Boolean).join(' ')}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>{c.email}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {c.techStacks.slice(0, 3).map(ts => (
+                              <Chip key={ts} label={ts} size="small" variant="outlined"
+                                sx={{ fontSize: 11, height: 22 }} />
+                            ))}
+                            {c.techStacks.length > 3 && (
+                              <Chip label={`+${c.techStacks.length - 3}`} size="small"
+                                sx={{ fontSize: 11, height: 22 }} />
+                            )}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          {c.hasPhoto ? <CheckCircle sx={{ color: '#27ae60', fontSize: 20 }} /> : <Cancel sx={{ color: '#ccc', fontSize: 20 }} />}
+                        </TableCell>
+                        <TableCell align="center">
+                          {c.hasVideo ? <CheckCircle sx={{ color: '#27ae60', fontSize: 20 }} /> : <Cancel sx={{ color: '#ccc', fontSize: 20 }} />}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
           </Box>
         );
@@ -452,7 +590,6 @@ const Dashboard = () => {
           </Grid>
         </Grid>
       </Container>
-      {!loading && token && <ChatWidget token={token} currentUser={currentUser} />}
     </Box>
   );
 };

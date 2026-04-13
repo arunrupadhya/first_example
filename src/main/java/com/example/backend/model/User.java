@@ -19,6 +19,9 @@ public class User {
     @Column(name = "photo_key")
     private String photoKey;
 
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'EMPLOYEE'")
+    private String role = "EMPLOYEE";
+
     // Constructors
     public User() {}
 
@@ -58,5 +61,13 @@ public class User {
 
     public void setPhotoKey(String photoKey) {
         this.photoKey = photoKey;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }

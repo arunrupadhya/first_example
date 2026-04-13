@@ -1,7 +1,9 @@
 package com.example.backend.config;
 
 import com.example.backend.model.TechStack;
+import com.example.backend.model.User;
 import com.example.backend.repository.TechStackRepository;
+import com.example.backend.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -11,13 +13,24 @@ import java.util.List;
 public class TechStackDataInitializer implements CommandLineRunner {
 
     private final TechStackRepository techStackRepository;
+    private final UserRepository userRepository;
 
-    public TechStackDataInitializer(TechStackRepository techStackRepository) {
+    public TechStackDataInitializer(TechStackRepository techStackRepository, UserRepository userRepository) {
         this.techStackRepository = techStackRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
     public void run(String... args) {
+        // Backfill role for existing users that have null
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            if (user.getRole() == null) {
+                user.setRole("EMPLOYEE");
+                userRepository.save(user);
+            }
+        }
+
         if (techStackRepository.count() > 0) {
             return; // Data already seeded
         }

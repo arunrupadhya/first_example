@@ -42,6 +42,7 @@ const Login = () => {
       const response = await axios.post('/api/auth/login', { username, password });
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('username', username);
+      localStorage.setItem('role', response.data.role || 'EMPLOYEE');
       navigate('/dashboard');
     } catch (err) {
       setError('Invalid username or password. Please try again.');

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -22,12 +22,22 @@ import {
   Email as EmailIcon
 } from '@mui/icons-material';
 
+interface TechStackOption {
+  id: number;
+  name: string;
+  category: string;
+}
+
+interface GroupedTechStackOption extends TechStackOption {
+  group: string;
+}
+
 const SendEmail = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
-  const [techStacks, setTechStacks] = useState([]);
-  const [selectedTechStacks, setSelectedTechStacks] = useState([]);
+  const [techStacks, setTechStacks] = useState<TechStackOption[]>([]);
+  const [selectedTechStacks, setSelectedTechStacks] = useState<GroupedTechStackOption[]>([]);
   const [candidateEmail, setCandidateEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
@@ -54,7 +64,7 @@ const SendEmail = () => {
     }).finally(() => setTechLoading(false));
   }, [token, navigate]);
 
-  const handleSend = async (e) => {
+  const handleSend = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -74,8 +84,8 @@ const SendEmail = () => {
       setSelectedTechStacks([]);
       setSubject('');
       setContent('');
-    } catch (err) {
-      if (err.response && err.response.data) {
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.data) {
         setError(typeof err.response.data === 'string' ? err.response.data : err.response.data.message || 'Failed to send email');
       } else {
         setError('Failed to send email. Please check SMTP configuration.');
@@ -86,7 +96,7 @@ const SendEmail = () => {
   };
 
   // Group tech stacks by category for the autocomplete
-  const groupedOptions = techStacks.map(ts => ({
+  const groupedOptions: GroupedTechStackOption[] = techStacks.map(ts => ({
     ...ts,
     group: ts.category
   }));

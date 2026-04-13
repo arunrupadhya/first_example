@@ -4,6 +4,8 @@
 -- ============================================================
 
 -- Drop existing tables if they exist (in correct order for FK constraints)
+DROP TABLE IF EXISTS candidate_tech_stacks CASCADE;
+DROP TABLE IF EXISTS candidate_applications CASCADE;
 DROP TABLE IF EXISTS user_roles CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
@@ -61,7 +63,8 @@ CREATE INDEX idx_tech_stacks_category ON tech_stacks(category);
 INSERT INTO roles (name) VALUES
     ('ROLE_USER'),
     ('ROLE_ADMIN'),
-    ('ROLE_CANDIDATE');
+    ('ROLE_CANDIDATE'),
+    ('ROLE_HR');
 
 -- ============================================================
 -- SEED DATA: Sample Users
@@ -73,7 +76,8 @@ INSERT INTO roles (name) VALUES
 INSERT INTO users (username, password, email) VALUES
     ('admin', '$2a$10$ax02xgNnApSbXFvOz.0BGu7DDjmTDh47XBrGbY4ncjI19d8k/Y50i', 'admin@example.com'),
     ('user1', '$2a$10$osedI7v3dR9UbmVw1/a1UOZ3u8TUlx9jHKuDqO2ZXJKNYsLoSt7F.', 'user1@example.com'),
-    ('demo',  '$2a$10$2Pq3gis7UlD6zsaF3SPsA.qjngiEjB3LTaTC3BylJ1jAsO2ZvDzza', 'demo@example.com');
+    ('demo',  '$2a$10$2Pq3gis7UlD6zsaF3SPsA.qjngiEjB3LTaTC3BylJ1jAsO2ZvDzza', 'demo@example.com'),
+    ('hruser','$2a$10$5u3kxpTb6Dc9s/4PMaAw5ObGgmELLQmJBriBx1vW6JLjG2y8hki4y', 'hruser@example.com');
 
 -- ============================================================
 -- SEED DATA: Assign roles to users
@@ -82,7 +86,8 @@ INSERT INTO user_roles (user_id, role_id) VALUES
     ((SELECT id FROM users WHERE username = 'admin'), (SELECT id FROM roles WHERE name = 'ROLE_ADMIN')),
     ((SELECT id FROM users WHERE username = 'admin'), (SELECT id FROM roles WHERE name = 'ROLE_USER')),
     ((SELECT id FROM users WHERE username = 'user1'), (SELECT id FROM roles WHERE name = 'ROLE_USER')),
-    ((SELECT id FROM users WHERE username = 'demo'),  (SELECT id FROM roles WHERE name = 'ROLE_USER'));
+    ((SELECT id FROM users WHERE username = 'demo'),  (SELECT id FROM roles WHERE name = 'ROLE_USER')),
+    ((SELECT id FROM users WHERE username = 'hruser'), (SELECT id FROM roles WHERE name = 'ROLE_HR'));
 
 -- ============================================================
 -- SEED DATA: IT Tech Stacks
@@ -164,3 +169,39 @@ INSERT INTO tech_stacks (name, category) VALUES
     ('gRPC', 'Tools'),
     ('Linux', 'Tools'),
     ('Agile/Scrum', 'Tools');
+
+-- ============================================================
+-- 5. CANDIDATE_APPLICATIONS TABLE
+-- ============================================================
+CREATE TABLE candidate_applications (
+    id                  BIGSERIAL       PRIMARY KEY,
+    first_name          VARCHAR(100)    NOT NULL,
+    middle_name         VARCHAR(100),
+    last_name           VARCHAR(100)    NOT NULL,
+    email               VARCHAR(255)    NOT NULL,
+    current_address     TEXT            NOT NULL,
+    permanent_address   TEXT            NOT NULL,
+    aadhaar_s3_key      VARCHAR(500),
+    pancard_s3_key      VARCHAR(500),
+    work_experience     TEXT,
+    first_job_date      DATE,
+    last_working_day    DATE,
+    last_company_salary NUMERIC(15, 2),
+    photo_s3_key        VARCHAR(500),
+    video_s3_key        VARCHAR(500),
+    created_at          TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_candidate_applications_email ON candidate_applications(email);
+
+-- ============================================================
+-- 6. CANDIDATE_TECH_STACKS JUNCTION TABLE (Many-to-Many)
+-- ============================================================
+CREATE TABLE candidate_tech_stacks (
+    candidate_id    BIGINT      NOT NULL REFERENCES candidate_applications(id) ON DELETE CASCADE,
+    tech_stack_id   BIGINT      NOT NULL REFERENCES tech_stacks(id) ON DELETE CASCADE,
+    PRIMARY KEY (candidate_id, tech_stack_id)
+);
+
+CREATE INDEX idx_candidate_tech_stacks_candidate ON candidate_tech_stacks(candidate_id);
+CREATE INDEX idx_candidate_tech_stacks_tech ON candidate_tech_stacks(tech_stack_id);

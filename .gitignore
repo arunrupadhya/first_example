@@ -34,4 +34,6 @@ build/
 
 ### Frontend ###
 frontend/node_modules/
+frontend/node_modules_old/
+frontend/node_modules_empty/
 frontend/dist/
