@@ -100,18 +100,18 @@
 			<version>2.20.162</version>
 		</dependency>
 		<dependency>
-			<groupId>software.amazon.awssdk</groupId>
-			<artifactId>rekognition</artifactId>
-			<version>2.20.162</version>
-		</dependency>
-		<dependency>
-			<groupId>software.amazon.awssdk</groupId>
-			<artifactId>bedrockruntime</artifactId>
-			<version>2.20.162</version>
+			<groupId>org.bytedeco</groupId>
+			<artifactId>javacv-platform</artifactId>
+			<version>1.5.10</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.hazelcast</groupId>
+			<artifactId>hazelcast</artifactId>
+			<version>5.3.6</version>
 		</dependency>
 		<!-- Google OAuth2 for Gmail XOAUTH2 token exchange -->
 		<dependency>

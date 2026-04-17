@@ -74,8 +74,13 @@ public class CandidateEmailController {
 
         body = body + "\n\nTech Stack: " + String.join(", ", request.getTechStacks());
 
-        emailService.sendEmail(request.getCandidateEmail(), request.getSubject(), body);
-        return ResponseEntity.ok(Map.of("message", "Email sent successfully to " + request.getCandidateEmail()));
+        try {
+            emailService.sendEmail(request.getCandidateEmail(), request.getSubject(), body);
+            return ResponseEntity.ok(Map.of("message", "Email sent successfully to " + request.getCandidateEmail()));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("message", ex.getMessage()));
+        }
     }
 
     private Long getOrCreateAssessment(Long candidateId) {

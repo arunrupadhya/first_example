@@ -9,27 +9,41 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
-import java.util.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class AIAgentService {
 
     private static final Logger log = LoggerFactory.getLogger(AIAgentService.class);
 
-    @Value("${aws.bedrock.model-id}")
-    private String modelId;
+    @Value("${local.ai.provider:ollama}")
+    private String provider;
 
-    private final BedrockRuntimeClient bedrockClient;
+    @Value("${local.ai.base-url:http://localhost:11434}")
+    private String baseUrl;
+
+    @Value("${local.ai.model:llama3.1}")
+    private String modelName;
+
+    @Value("${local.ai.timeout-seconds:60}")
+    private int timeoutSeconds;
+
     private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
 
-    public AIAgentService(BedrockRuntimeClient bedrockRuntimeClient, ObjectMapper objectMapper) {
-        this.bedrockClient = bedrockRuntimeClient;
+    public AIAgentService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
     }
 
     /**
@@ -84,31 +98,7 @@ public class AIAgentService {
         prompt.append("and the correct solution approach)\n\n");
         prompt.append("The questions should cover the candidate's tech stacks proportionally.\n");
         prompt.append("Difficulty: mix of easy (30%), medium (50%), hard (20%).\n\n");
-        prompt.append("Respond in STRICT JSON format:\n");
-        prompt.append("{\n");
-        prompt.append("  \"objective\": [\n");
-        prompt.append("    {\n");
-        prompt.append("      \"id\": 1,\n");
-        prompt.append("      \"question\": \"...\",\n");
-        prompt.append("      \"options\": {\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"},\n");
-        prompt.append("      \"correctAnswer\": \"B\",\n");
-        prompt.append("      \"difficulty\": \"easy|medium|hard\",\n");
-        prompt.append("      \"topic\": \"...\"\n");
-        prompt.append("    }\n");
-        prompt.append("  ],\n");
-        prompt.append("  \"coding\": [\n");
-        prompt.append("    {\n");
-        prompt.append("      \"id\": 21,\n");
-        prompt.append("      \"question\": \"...\",\n");
-        prompt.append("      \"exampleInput\": \"...\",\n");
-        prompt.append("      \"exampleOutput\": \"...\",\n");
-        prompt.append("      \"correctApproach\": \"...\",\n");
-        prompt.append("      \"difficulty\": \"medium|hard\",\n");
-        prompt.append("      \"topic\": \"...\"\n");
-        prompt.append("    }\n");
-        prompt.append("  ]\n");
-        prompt.append("}\n");
-        prompt.append("Respond with ONLY valid JSON, no markdown, no explanation.");
+        prompt.append("Respond with ONLY valid JSON and no markdown fences.");
 
         String aiResponse = invokeModel(prompt.toString());
         if (isLikelyJson(aiResponse)) {
@@ -130,36 +120,7 @@ public class AIAgentService {
         for (Map.Entry<Integer, String> entry : candidateAnswers.entrySet()) {
             prompt.append("Question ").append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
         }
-        prompt.append("\nEvaluate each answer. For objective questions, mark correct/incorrect. ");
-        prompt.append("For coding questions, evaluate the approach, correctness, and code quality.\n\n");
-        prompt.append("Respond in STRICT JSON format:\n");
-        prompt.append("{\n");
-        prompt.append("  \"totalScore\": 85,\n");
-        prompt.append("  \"maxScore\": 100,\n");
-        prompt.append("  \"objectiveScore\": 16,\n");
-        prompt.append("  \"objectiveMax\": 20,\n");
-        prompt.append("  \"codingScore\": 69,\n");
-        prompt.append("  \"codingMax\": 80,\n");
-        prompt.append("  \"grade\": \"A|B|C|D|F\",\n");
-        prompt.append("  \"summary\": \"Overall evaluation summary...\",\n");
-        prompt.append("  \"strengths\": [\"strength1\", \"strength2\"],\n");
-        prompt.append("  \"weaknesses\": [\"weakness1\"],\n");
-        prompt.append("  \"recommendation\": \"HIRE|CONSIDER|REJECT\",\n");
-        prompt.append("  \"questionResults\": [\n");
-        prompt.append("    {\n");
-        prompt.append("      \"questionId\": 1,\n");
-        prompt.append("      \"type\": \"objective|coding\",\n");
-        prompt.append("      \"correct\": true,\n");
-        prompt.append("      \"score\": 1,\n");
-        prompt.append("      \"maxScore\": 1,\n");
-        prompt.append("      \"feedback\": \"Correct! ...\"\n");
-        prompt.append("    }\n");
-        prompt.append("  ]\n");
-        prompt.append("}\n");
-        prompt.append("Scoring: Each objective question = 1 point (20 total). ");
-        prompt.append("Each coding question = 16 points (80 total, graded on correctness, approach, efficiency). ");
-        prompt.append("Total max = 100.\n");
-        prompt.append("Respond with ONLY valid JSON, no markdown.");
+        prompt.append("\nReturn valid JSON with score, grade, strengths, weaknesses, recommendation, and per-question feedback only.");
 
         String aiResponse = invokeModel(prompt.toString());
         if (isLikelyJson(aiResponse)) {
@@ -172,27 +133,16 @@ public class AIAgentService {
      * Perform comprehensive identity analysis using AI - combining face, video, and audio signals.
      */
     public String analyzeIdentityVerification(double faceMatchConfidence, String faceMatchResult,
-                                               boolean hasVideoMatch, boolean hasAudioMatch,
-                                               String candidateName) {
+                                              boolean hasVideoMatch, boolean hasAudioMatch,
+                                              String candidateName) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("You are an AI identity verification analyst. Provide a comprehensive analysis ");
-        prompt.append("of the identity verification results for candidate: ").append(candidateName).append("\n\n");
-        prompt.append("Verification signals:\n");
-        prompt.append("1. FACE MATCH (Photo comparison): Result=").append(faceMatchResult);
-        prompt.append(", Confidence=").append(String.format("%.2f%%", faceMatchConfidence)).append("\n");
-        prompt.append("2. VIDEO ANALYSIS (Multiple frame comparison): ");
-        prompt.append(hasVideoMatch ? "Consistent face detected across video frames" :
-                "Inconsistent or no face detected in video frames").append("\n");
-        prompt.append("3. AUDIO ANALYSIS (Voice pattern): ");
-        prompt.append(hasAudioMatch ? "Voice patterns are consistent with original recording" :
-                "Voice patterns could not be matched or differ from original").append("\n\n");
-        prompt.append("Provide:\n");
-        prompt.append("1. Overall verdict (VERIFIED / SUSPICIOUS / FAILED)\n");
-        prompt.append("2. Confidence percentage (0-100)\n");
-        prompt.append("3. Detailed analysis of each signal\n");
-        prompt.append("4. Risk assessment\n");
-        prompt.append("5. Recommendation for HR\n\n");
-        prompt.append("Respond in plain text, well-formatted with sections.");
+        prompt.append("You are an AI identity verification analyst. Provide a concise risk review for candidate ")
+                .append(candidateName).append(".\n\n")
+                .append("Photo match result: ").append(faceMatchResult).append("\n")
+                .append("Photo confidence: ").append(String.format("%.2f%%", faceMatchConfidence)).append("\n")
+                .append("Video consistency: ").append(hasVideoMatch ? "match detected" : "no reliable match").append("\n")
+                .append("Audio signal: ").append(hasAudioMatch ? "present" : "absent or unclear").append("\n\n")
+                .append("Return plain text with overall verdict, risk, and HR recommendation.");
 
         String aiResponse = invokeModel(prompt.toString());
         if (isUsableTextResponse(aiResponse)) {
@@ -426,42 +376,44 @@ public class AIAgentService {
     }
 
     private String invokeModel(String prompt) {
+        if (!"ollama".equalsIgnoreCase(provider)) {
+            log.warn("Unsupported local AI provider '{}', using fallback mode.", provider);
+            return "AI service unavailable: Unsupported local AI provider.";
+        }
+
         try {
+            String normalizedBaseUrl = baseUrl.endsWith("/")
+                    ? baseUrl.substring(0, baseUrl.length() - 1)
+                    : baseUrl;
+
             ObjectNode requestBody = objectMapper.createObjectNode();
-            requestBody.put("anthropic_version", "bedrock-2023-05-31");
-            requestBody.put("max_tokens", 4096);
+            requestBody.put("model", modelName);
+            requestBody.put("prompt", prompt);
+            requestBody.put("stream", false);
             requestBody.put("temperature", 0.3);
 
-            ArrayNode messages = requestBody.putArray("messages");
-            ObjectNode message = messages.addObject();
-            message.put("role", "user");
-            ArrayNode content = message.putArray("content");
-            ObjectNode textContent = content.addObject();
-            textContent.put("type", "text");
-            textContent.put("text", prompt);
-
-            String requestJson = objectMapper.writeValueAsString(requestBody);
-
-            InvokeModelRequest request = InvokeModelRequest.builder()
-                    .modelId(modelId)
-                    .contentType("application/json")
-                    .accept("application/json")
-                    .body(SdkBytes.fromUtf8String(requestJson))
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(normalizedBaseUrl + "/api/generate"))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(Math.max(timeoutSeconds, 10)))
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
                     .build();
 
-            InvokeModelResponse response = bedrockClient.invokeModel(request);
-            String responseJson = response.body().asUtf8String();
-
-            JsonNode responseNode = objectMapper.readTree(responseJson);
-            JsonNode contentArray = responseNode.get("content");
-            if (contentArray != null && contentArray.isArray() && !contentArray.isEmpty()) {
-                return contentArray.get(0).get("text").asText();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.warn("Local AI service returned status {}", response.statusCode());
+                return "AI service unavailable: Local model returned status " + response.statusCode();
             }
 
+            JsonNode responseNode = objectMapper.readTree(response.body());
+            String text = responseNode.path("response").asText("");
+            if (!text.isBlank()) {
+                return text.trim();
+            }
             return responseNode.toString();
 
         } catch (Exception e) {
-            log.error("Failed to invoke Bedrock model: {}", e.getMessage(), e);
+            log.error("Failed to invoke local AI model: {}", e.getMessage(), e);
             return "AI service unavailable: " + e.getMessage();
         }
     }
@@ -471,7 +423,6 @@ public class AIAgentService {
      */
     public Map<String, Object> parseQuestionsJson(String aiResponse) {
         try {
-            // Strip markdown code block if present
             String json = aiResponse.trim();
             if (json.startsWith("```")) {
                 json = json.replaceAll("^```[a-z]*\\n?", "").replaceAll("\\n?```$", "").trim();

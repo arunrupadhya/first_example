@@ -32,7 +32,8 @@ Primary flow:
 ### External integrations
 - PostgreSQL / H2 fallback for development or tests
 - AWS S3 for file storage
-- AWS Rekognition / Bedrock related dependencies
+- Local JavaCV/OpenCV-style vision analysis for identity checks
+- Local Ollama-based AI generation and evaluation
 - Gmail OAuth2 / SMTP for email sending
 
 ## Key Structure
@@ -85,6 +86,7 @@ The Maven build is configured to run frontend npm install and frontend build dur
 
 ## Known Risks / Cleanup Items
 - Sensitive configuration should be fully externalized to environment variables or a secret manager.
+- Local AI features now expect an Ollama runtime if you want live generative responses; otherwise the app uses built-in fallback logic.
 - AWS, mail, and database integrations are core dependencies, so local setup may need valid credentials unless fallback settings are used.
 - The `target` folder contains build artifacts and should not be used as the source of truth.
 

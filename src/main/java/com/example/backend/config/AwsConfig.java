@@ -9,8 +9,6 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
-import software.amazon.awssdk.services.rekognition.RekognitionClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
@@ -25,9 +23,6 @@ public class AwsConfig {
 
     @Value("${aws.s3.region:us-east-1}")
     private String s3Region;
-
-    @Value("${aws.bedrock.region:us-east-1}")
-    private String bedrockRegion;
 
     private AwsCredentialsProvider credentialsProvider() {
         if (StringUtils.hasText(accessKey) && StringUtils.hasText(secretKey)) {
@@ -53,19 +48,5 @@ public class AwsConfig {
                 .build();
     }
 
-    @Bean
-    public RekognitionClient rekognitionClient() {
-        return RekognitionClient.builder()
-                .region(Region.of(s3Region))
-                .credentialsProvider(credentialsProvider())
-                .build();
-    }
-
-    @Bean
-    public BedrockRuntimeClient bedrockRuntimeClient() {
-        return BedrockRuntimeClient.builder()
-                .region(Region.of(bedrockRegion))
-                .credentialsProvider(credentialsProvider())
-                .build();
-    }
 }
+
