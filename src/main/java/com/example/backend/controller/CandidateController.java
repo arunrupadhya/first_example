@@ -5,6 +5,7 @@ import com.example.backend.repository.CandidateApplicationRepository;
 import com.example.backend.service.S3Service;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -89,6 +90,42 @@ public class CandidateController {
             map.put("videoUrl", s3Service.generatePresignedUrl(c.getVideoS3Key()));
         }
 
+        // Selection status fields
+        map.put("selectionStatus", c.getSelectionStatus());
+        map.put("selectionNotes", c.getSelectionNotes());
+        map.put("selectedBy", c.getSelectedBy());
+        map.put("selectedAt", c.getSelectedAt());
+
         return ResponseEntity.ok(map);
+    }
+
+    @PutMapping("/{id}/selection")
+    public ResponseEntity<?> updateSelectionStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        Optional<CandidateApplication> opt = candidateRepo.findById(id);
+        if (opt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String status = body.get("selectionStatus");
+        if (status == null || (!status.equals("SELECTED") && !status.equals("NOT_SELECTED"))) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid selection status"));
+        }
+
+        CandidateApplication c = opt.get();
+        c.setSelectionStatus(status);
+        c.setSelectionNotes(body.get("selectionNotes"));
+        c.setSelectedBy(authentication.getName());
+        c.setSelectedAt(java.time.Instant.now());
+        candidateRepo.save(c);
+
+        return ResponseEntity.ok(Map.of(
+            "message", "Selection status updated",
+            "selectionStatus", c.getSelectionStatus(),
+            "selectedBy", c.getSelectedBy(),
+            "selectedAt", c.getSelectedAt().toString()
+        ));
     }
 }

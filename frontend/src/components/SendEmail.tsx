@@ -1,5 +1,5 @@
 import { useEffect, useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
   Container,
@@ -14,7 +14,10 @@ import {
   CircularProgress,
   AppBar,
   Toolbar,
-  IconButton
+  IconButton,
+  Checkbox,
+  FormControlLabel,
+  FormHelperText
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -34,13 +37,43 @@ interface GroupedTechStackOption extends TechStackOption {
 
 const SendEmail = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const token = localStorage.getItem('token');
+  const routeState = location.state as {
+    candidateId?: number;
+    candidateEmail?: string;
+    candidateName?: string;
+    candidateTechStacks?: string[];
+  } | null;
+  const registrationLink = `${window.location.origin}/candidate-register`;
+  const validationLink = routeState?.candidateId
+    ? `${window.location.origin}/identity-verification/${routeState.candidateId}`
+    : '';
+  const defaultInviteSubject = 'Validation Interview Registration Invitation';
+  const defaultInviteContent = `Dear Candidate,\n\nYou are invited to complete your registration for the validation interview process.\n\nPlease use the link below to register:\n${registrationLink}\n\nBest regards`;
+  const [includeOnlineExam, setIncludeOnlineExam] = useState(false);
+
+  const buildNextRoundContent = (name: string, examIncluded: boolean) => {
+    const examMessage = examIncluded
+      ? 'After identity validation, please complete the online assessment using the exam link that will be included in this email.'
+      : 'Please attend the final round in person at our office. HR will share the face-to-face interview schedule with you.';
+
+    return `Dear ${name},\n\nCongratulations. You have been selected for the next round of the interview process.\n\nPlease complete the photo, video and audio identity validation using the link below:\n${validationLink}\n\n${examMessage}\n\nBest regards`;
+  };
 
   const [techStacks, setTechStacks] = useState<TechStackOption[]>([]);
   const [selectedTechStacks, setSelectedTechStacks] = useState<GroupedTechStackOption[]>([]);
-  const [candidateEmail, setCandidateEmail] = useState('');
-  const [subject, setSubject] = useState('');
-  const [content, setContent] = useState('');
+  const [candidateEmail, setCandidateEmail] = useState(routeState?.candidateEmail || '');
+  const [subject, setSubject] = useState(
+    routeState?.candidateId && routeState?.candidateName
+      ? `Next Round Interview Instructions for ${routeState.candidateName}`
+      : defaultInviteSubject
+  );
+  const [content, setContent] = useState(
+    routeState?.candidateId && routeState?.candidateName
+      ? buildNextRoundContent(routeState.candidateName, Boolean(routeState?.candidateId))
+      : defaultInviteContent
+  );
   const [loading, setLoading] = useState(false);
   const [techLoading, setTechLoading] = useState(true);
   const [success, setSuccess] = useState('');
@@ -55,6 +88,13 @@ const SendEmail = () => {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => {
       setTechStacks(res.data);
+      // Pre-select tech stacks from route state
+      if (routeState?.candidateTechStacks && res.data.length > 0) {
+        const preSelected = res.data
+          .filter((ts: TechStackOption) => routeState.candidateTechStacks!.includes(ts.name))
+          .map((ts: TechStackOption) => ({ ...ts, group: ts.category }));
+        setSelectedTechStacks(preSelected);
+      }
     }).catch(err => {
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
         localStorage.removeItem('token');
@@ -62,7 +102,14 @@ const SendEmail = () => {
         navigate('/login');
       }
     }).finally(() => setTechLoading(false));
-  }, [token, navigate]);
+  }, [token, navigate, routeState]);
+
+  useEffect(() => {
+    if (routeState?.candidateId && routeState?.candidateName) {
+      setSubject(`Next Round Interview Instructions for ${routeState.candidateName}`);
+      setContent(buildNextRoundContent(routeState.candidateName, includeOnlineExam));
+    }
+  }, [routeState, includeOnlineExam]);
 
   const handleSend = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -72,10 +119,12 @@ const SendEmail = () => {
 
     try {
       const res = await axios.post('/api/candidate/send-email', {
+        candidateId: routeState?.candidateId,
         candidateEmail,
         techStacks: selectedTechStacks.map(t => t.name),
         subject,
-        content
+        content,
+        includeOnlineExam
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -105,10 +154,10 @@ const SendEmail = () => {
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       <AppBar position="static" sx={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         <Toolbar>
-          <IconButton edge="start" onClick={() => navigate('/dashboard')} sx={{ color: '#667eea', mr: 2 }}>
+          <IconButton edge="start" aria-label="Back to dashboard" onClick={() => navigate('/dashboard')} sx={{ color: '#667eea', mr: 2 }}>
             <ArrowBackIcon />
           </IconButton>
-          <EmailIcon sx={{ color: '#667eea', mr: 1 }} />
+          <EmailIcon aria-hidden="true" sx={{ color: '#667eea', mr: 1 }} />
           <Typography variant="h6" sx={{ flexGrow: 1, color: '#2c3e50', fontWeight: 600 }}>
             Send Email to Candidate
           </Typography>
@@ -138,7 +187,7 @@ const SendEmail = () => {
 
             {techLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                <CircularProgress size={24} />
+                <CircularProgress size={24} aria-label="Loading tech stacks" />
               </Box>
             ) : (
               <Autocomplete
@@ -180,6 +229,23 @@ const SendEmail = () => {
               sx={{ mb: 3 }}
             />
 
+            {routeState?.candidateId && (
+              <Box sx={{ mb: 3 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={includeOnlineExam}
+                      onChange={(e) => setIncludeOnlineExam(e.target.checked)}
+                    />
+                  }
+                  label="Include online exam link in this next-round email"
+                />
+                <FormHelperText>
+                  If unchecked, the email will ask the candidate to attend the final face-to-face interview at the office.
+                </FormHelperText>
+              </Box>
+            )}
+
             <TextField
               label="Email Content"
               fullWidth
@@ -196,7 +262,7 @@ const SendEmail = () => {
               variant="contained"
               size="large"
               disabled={loading}
-              endIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+              endIcon={loading ? <CircularProgress size={20} color="inherit" aria-label="Sending email" /> : <SendIcon />}
               sx={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 px: 4,

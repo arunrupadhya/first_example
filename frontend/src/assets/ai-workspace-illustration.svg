@@ -1,0 +1,36 @@
+<svg width="720" height="520" viewBox="0 0 720 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="48" y1="36" x2="650" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="0.55" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#0EA5A4"/>
+    </linearGradient>
+    <linearGradient id="card" x1="120" y1="110" x2="540" y2="380" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#EEF4FF" stop-opacity="0.92"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="672" height="472" rx="36" fill="url(#bg)"/>
+  <circle cx="140" cy="112" r="74" fill="white" fill-opacity="0.12"/>
+  <circle cx="608" cy="408" r="92" fill="white" fill-opacity="0.08"/>
+  <rect x="110" y="92" width="500" height="308" rx="28" fill="url(#card)"/>
+  <rect x="142" y="126" width="178" height="16" rx="8" fill="#C7D7FE"/>
+  <rect x="142" y="154" width="116" height="12" rx="6" fill="#D9E5FF"/>
+  <rect x="142" y="202" width="208" height="130" rx="18" fill="#F5F7FF"/>
+  <rect x="374" y="202" width="204" height="56" rx="16" fill="#EEF2FF"/>
+  <rect x="374" y="276" width="204" height="56" rx="16" fill="#ECFEFB"/>
+  <circle cx="186" cy="246" r="18" fill="#4F46E5" fill-opacity="0.16"/>
+  <circle cx="186" cy="290" r="18" fill="#0EA5A4" fill-opacity="0.16"/>
+  <rect x="216" y="236" width="98" height="10" rx="5" fill="#9FB9FF"/>
+  <rect x="216" y="254" width="72" height="8" rx="4" fill="#C8D8FF"/>
+  <rect x="216" y="280" width="112" height="10" rx="5" fill="#8FD8D3"/>
+  <rect x="216" y="298" width="86" height="8" rx="4" fill="#BCEBE7"/>
+  <rect x="402" y="218" width="66" height="10" rx="5" fill="#B9C8FF"/>
+  <rect x="402" y="236" width="132" height="8" rx="4" fill="#D6E1FF"/>
+  <rect x="402" y="292" width="78" height="10" rx="5" fill="#95DED9"/>
+  <rect x="402" y="310" width="126" height="8" rx="4" fill="#C7F1EE"/>
+  <path d="M154 366C205 332 267 320 332 322C396 324 452 348 536 326" stroke="#4F46E5" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="246" cy="340" r="8" fill="#4F46E5"/>
+  <circle cx="360" cy="326" r="8" fill="#7C3AED"/>
+  <circle cx="474" cy="334" r="8" fill="#0EA5A4"/>
+</svg>

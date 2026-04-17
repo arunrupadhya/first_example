@@ -169,7 +169,7 @@ const CandidateVideo = () => {
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       <AppBar position="static" sx={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         <Toolbar>
-          <VideoCall sx={{ color: '#667eea', mr: 1 }} />
+          <VideoCall aria-hidden="true" sx={{ color: '#667eea', mr: 1 }} />
           <Typography variant="h6" sx={{ flexGrow: 1, color: '#2c3e50', fontWeight: 600 }}>
             Video Introduction
           </Typography>
@@ -195,13 +195,15 @@ const CandidateVideo = () => {
           {cameraActive && (
             <Box sx={{ mb: 2 }}>
               <video ref={videoRef} autoPlay playsInline muted
+                aria-label="Camera preview for video recording"
                 style={{
                   width: '100%', maxWidth: 480, borderRadius: 12,
                   border: recording ? '3px solid #e74c3c' : '3px solid #667eea'
                 }} />
 
               {recording && (
-                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}
+                  role="status" aria-live="polite">
                   <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#e74c3c',
                     animation: 'pulse 1s infinite',
                     '@keyframes pulse': { '0%': { opacity: 1 }, '50%': { opacity: 0.3 }, '100%': { opacity: 1 } }
@@ -242,13 +244,14 @@ const CandidateVideo = () => {
           {recordedBlob && !success && (
             <Box sx={{ mb: 2 }}>
               <video ref={previewRef} controls
+                aria-label="Recorded video preview"
                 style={{ width: '100%', maxWidth: 480, borderRadius: 12, border: '3px solid #27ae60' }} />
               <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
                 <Button variant="outlined" onClick={retake} startIcon={<Replay />}>
                   Re-record
                 </Button>
                 <Button variant="contained" onClick={uploadVideo} disabled={uploading}
-                  startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+                  startIcon={uploading ? <CircularProgress size={20} color="inherit" aria-label="Uploading video" /> : <CheckCircle />}
                   sx={{
                     background: 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)',
                     '&:hover': { background: 'linear-gradient(135deg, #229954 0%, #27ae60 100%)' }
@@ -268,6 +271,9 @@ const CandidateVideo = () => {
               </Typography>
               <Typography variant="body2" sx={{ color: '#555', mt: 1 }}>
                 Thank you for completing your registration. We will review your application and get back to you.
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#667eea', mt: 2, fontWeight: 600 }}>
+                For subsequent interview rounds, use the identity verification link sent to your email.
               </Typography>
             </Box>
           )}

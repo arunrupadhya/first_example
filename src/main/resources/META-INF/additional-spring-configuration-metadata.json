@@ -1,0 +1,69 @@
+{
+  "properties": [
+    {
+      "name": "aws.s3.access-key",
+      "type": "java.lang.String",
+      "description": "AWS access key ID for S3 and other AWS services."
+    },
+    {
+      "name": "aws.s3.secret-key",
+      "type": "java.lang.String",
+      "description": "AWS secret access key for S3 and other AWS services."
+    },
+    {
+      "name": "aws.s3.bucket-name",
+      "type": "java.lang.String",
+      "description": "S3 bucket name for storing candidate files."
+    },
+    {
+      "name": "aws.s3.region",
+      "type": "java.lang.String",
+      "description": "AWS region for S3 bucket."
+    },
+    {
+      "name": "aws.s3.photo-prefix",
+      "type": "java.lang.String",
+      "description": "S3 key prefix for candidate photo uploads."
+    },
+    {
+      "name": "aws.s3.document-prefix",
+      "type": "java.lang.String",
+      "description": "S3 key prefix for candidate document uploads."
+    },
+    {
+      "name": "aws.s3.video-prefix",
+      "type": "java.lang.String",
+      "description": "S3 key prefix for candidate video uploads."
+    },
+    {
+      "name": "aws.secret.name",
+      "type": "java.lang.String",
+      "description": "AWS Secrets Manager secret name for DB credentials."
+    },
+    {
+      "name": "aws.bedrock.region",
+      "type": "java.lang.String",
+      "description": "AWS region for Bedrock AI service."
+    },
+    {
+      "name": "aws.bedrock.model-id",
+      "type": "java.lang.String",
+      "description": "Bedrock model ID for AI agent (e.g. Claude 3 Sonnet)."
+    },
+    {
+      "name": "google.oauth2.clientId",
+      "type": "java.lang.String",
+      "description": "Google OAuth2 client ID for Gmail SMTP authentication."
+    },
+    {
+      "name": "google.oauth2.clientSecret",
+      "type": "java.lang.String",
+      "description": "Google OAuth2 client secret for Gmail SMTP authentication."
+    },
+    {
+      "name": "google.oauth2.refreshToken",
+      "type": "java.lang.String",
+      "description": "Google OAuth2 refresh token for Gmail SMTP authentication."
+    }
+  ]
+}

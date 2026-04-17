@@ -123,7 +123,7 @@ const CandidatePhoto = () => {
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       <AppBar position="static" sx={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         <Toolbar>
-          <PhotoCamera sx={{ color: '#667eea', mr: 1 }} />
+          <PhotoCamera aria-hidden="true" sx={{ color: '#667eea', mr: 1 }} />
           <Typography variant="h6" sx={{ flexGrow: 1, color: '#2c3e50', fontWeight: 600 }}>
             Capture Your Photo
           </Typography>
@@ -150,6 +150,7 @@ const CandidatePhoto = () => {
           {cameraActive && (
             <Box sx={{ mb: 2 }}>
               <video ref={videoRef} autoPlay playsInline muted
+                aria-label="Camera preview for photo capture"
                 style={{ width: '100%', maxWidth: 480, borderRadius: 12, border: '3px solid #667eea' }} />
               <Box sx={{ mt: 2 }}>
                 <Button variant="contained" size="large" onClick={capturePhoto}
@@ -167,14 +168,14 @@ const CandidatePhoto = () => {
 
           {capturedImage && !success && (
             <Box sx={{ mb: 2 }}>
-              <img src={capturedImage} alt="Captured"
+              <img src={capturedImage} alt="Your captured photo preview"
                 style={{ width: '100%', maxWidth: 480, borderRadius: 12, border: '3px solid #27ae60' }} />
               <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
                 <Button variant="outlined" onClick={retake} startIcon={<Refresh />}>
                   Retake
                 </Button>
                 <Button variant="contained" onClick={uploadPhoto} disabled={uploading}
-                  startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+                  startIcon={uploading ? <CircularProgress size={20} color="inherit" aria-label="Uploading photo" /> : <CheckCircle />}
                   sx={{
                     background: 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)',
                     '&:hover': { background: 'linear-gradient(135deg, #229954 0%, #27ae60 100%)' }

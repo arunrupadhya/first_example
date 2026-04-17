@@ -8,6 +8,8 @@ import java.util.List;
 
 public class SendEmailRequest {
 
+    private Long candidateId;
+
     @NotBlank(message = "Candidate email is required")
     @Email(message = "Invalid email format")
     private String candidateEmail;
@@ -20,6 +22,16 @@ public class SendEmailRequest {
 
     @NotBlank(message = "Mail content is required")
     private String content;
+
+    private Boolean includeOnlineExam = false;
+
+    public Long getCandidateId() {
+        return candidateId;
+    }
+
+    public void setCandidateId(Long candidateId) {
+        this.candidateId = candidateId;
+    }
 
     public String getCandidateEmail() {
         return candidateEmail;
@@ -51,5 +63,13 @@ public class SendEmailRequest {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public Boolean getIncludeOnlineExam() {
+        return includeOnlineExam;
+    }
+
+    public void setIncludeOnlineExam(Boolean includeOnlineExam) {
+        this.includeOnlineExam = includeOnlineExam;
     }
 }

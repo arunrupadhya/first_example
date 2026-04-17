@@ -1,70 +1,122 @@
 package com.example.backend.config;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 
 import jakarta.annotation.PostConstruct;
+import java.util.HashMap;
 import java.util.Map;
 
 @Component
 public class AwsSecretsConfig {
 
-    @Value("${aws.secret.name:dev/my-app/db-credentials}")
+    private static final Logger log = LoggerFactory.getLogger(AwsSecretsConfig.class);
+
+    private final ObjectMapper objectMapper;
+
+    @Value("${aws.secret.name:}")
     private String secretName;
+
+    @Value("${aws.secrets.region:${aws.s3.region:us-east-1}}")
+    private String secretRegion;
+
+    @Value("${aws.s3.access-key:${AWS_ACCESS_KEY_ID:}}")
+    private String accessKey;
+
+    @Value("${aws.s3.secret-key:${AWS_SECRET_ACCESS_KEY:}}")
+    private String secretKey;
+
+    public AwsSecretsConfig(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @PostConstruct
     public void loadSecrets() {
-        try {
-            SecretsManagerClient client = SecretsManagerClient.builder()
-                    .region(Region.AP_SOUTH_1) // Change to your region
-                    .build();
+        if (!StringUtils.hasText(secretName)) {
+            log.info("AWS secret name is not configured; using environment and application properties.");
+            return;
+        }
+
+        try (SecretsManagerClient client = SecretsManagerClient.builder()
+                .region(Region.of(secretRegion))
+                .credentialsProvider(credentialsProvider())
+                .build()) {
 
             GetSecretValueRequest request = GetSecretValueRequest.builder()
                     .secretId(secretName)
                     .build();
 
             GetSecretValueResponse response = client.getSecretValue(request);
-            String secretString = response.secretString();
+            Map<String, String> secrets = parseSecretString(response.secretString());
 
-            // Assuming the secret is JSON like {"DB_USERNAME":"value","DB_PASSWORD":"value"}
-            // Parse and set as system properties
-            // For simplicity, if it's key-value pairs
-            Map<String, String> secrets = parseSecretString(secretString);
-            if (secrets.containsKey("DB_USERNAME")) {
-                System.setProperty("DB_USERNAME", secrets.get("DB_USERNAME"));
-            }
-            if (secrets.containsKey("DB_PASSWORD")) {
-                System.setProperty("DB_PASSWORD", secrets.get("DB_PASSWORD"));
-            }
+            secrets.forEach((key, value) -> {
+                if (StringUtils.hasText(key) && StringUtils.hasText(value) && !StringUtils.hasText(System.getProperty(key))) {
+                    System.setProperty(key, value);
+                }
+            });
 
-            client.close();
+            log.info("Loaded {} entries from AWS Secrets Manager.", secrets.size());
         } catch (Exception e) {
-            System.err.println("Failed to load secrets from AWS: " + e.getMessage());
-            // Fallback to environment variables
+            log.warn("Failed to load secrets from AWS Secrets Manager '{}': {}", secretName, e.getMessage());
         }
     }
 
-    private Map<String, String> parseSecretString(String secretString) {
-        // Simple JSON parsing, assuming {"key":"value"} format
-        // In production, use a JSON library
-        Map<String, String> map = new java.util.HashMap<>();
-        secretString = secretString.trim();
-        if (secretString.startsWith("{") && secretString.endsWith("}")) {
-            secretString = secretString.substring(1, secretString.length() - 1);
-            String[] pairs = secretString.split(",");
-            for (String pair : pairs) {
-                String[] keyValue = pair.split(":");
-                if (keyValue.length == 2) {
-                    String key = keyValue[0].trim().replace("\"", "");
-                    String value = keyValue[1].trim().replace("\"", "");
-                    map.put(key, value);
-                }
+    private AwsCredentialsProvider credentialsProvider() {
+        if (StringUtils.hasText(accessKey) && StringUtils.hasText(secretKey)) {
+            return StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(accessKey.trim(), secretKey.trim()));
+        }
+        return DefaultCredentialsProvider.create();
+    }
+
+    private String normalizeSecretValue(String key, Object value) {
+        if (value == null) {
+            return "";
+        }
+
+        String text = String.valueOf(value).trim();
+        if (!StringUtils.hasText(text)) {
+            return "";
+        }
+
+        if ("SPRING_DATASOURCE_URL".equals(key) || "DB_URL".equals(key) || "spring.datasource.url".equals(key)) {
+            if (text.startsWith("jdbcjdbc:")) {
+                return text.replaceFirst("^jdbcjdbc:", "jdbc:");
+            }
+            if (text.startsWith("jdbcpostgresql://")) {
+                return text.replaceFirst("^jdbcpostgresql://", "jdbc:postgresql://");
             }
         }
-        return map;
+
+        return text;
+    }
+
+    private Map<String, String> parseSecretString(String secretString) {
+        if (!StringUtils.hasText(secretString)) {
+            return Map.of();
+        }
+
+        try {
+            Map<String, Object> rawSecrets = objectMapper.readValue(secretString, new TypeReference<Map<String, Object>>() {});
+            Map<String, String> parsedSecrets = new HashMap<>();
+            rawSecrets.forEach((key, value) -> parsedSecrets.put(key, normalizeSecretValue(key, value)));
+            return parsedSecrets;
+        } catch (Exception e) {
+            log.warn("Secret payload is not valid JSON. No properties were imported.");
+            return Map.of();
+        }
     }
 }

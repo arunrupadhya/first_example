@@ -4,6 +4,7 @@
 -- ============================================================
 
 -- Drop existing tables if they exist (in correct order for FK constraints)
+DROP TABLE IF EXISTS identity_verifications CASCADE;
 DROP TABLE IF EXISTS candidate_tech_stacks CASCADE;
 DROP TABLE IF EXISTS candidate_applications CASCADE;
 DROP TABLE IF EXISTS user_roles CASCADE;
@@ -189,10 +190,15 @@ CREATE TABLE candidate_applications (
     last_company_salary NUMERIC(15, 2),
     photo_s3_key        VARCHAR(500),
     video_s3_key        VARCHAR(500),
+    selection_status    VARCHAR(20)     DEFAULT 'PENDING',
+    selection_notes     TEXT,
+    selected_by         VARCHAR(50),
+    selected_at         TIMESTAMP,
     created_at          TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_candidate_applications_email ON candidate_applications(email);
+CREATE INDEX idx_candidate_applications_selection ON candidate_applications(selection_status);
 
 -- ============================================================
 -- 6. CANDIDATE_TECH_STACKS JUNCTION TABLE (Many-to-Many)
@@ -205,3 +211,62 @@ CREATE TABLE candidate_tech_stacks (
 
 CREATE INDEX idx_candidate_tech_stacks_candidate ON candidate_tech_stacks(candidate_id);
 CREATE INDEX idx_candidate_tech_stacks_tech ON candidate_tech_stacks(tech_stack_id);
+
+-- ============================================================
+-- 7. IDENTITY_VERIFICATIONS TABLE
+-- ============================================================
+CREATE TABLE identity_verifications (
+    id                      BIGSERIAL       PRIMARY KEY,
+    candidate_id            BIGINT          NOT NULL REFERENCES candidate_applications(id) ON DELETE CASCADE,
+    round_number            INTEGER         NOT NULL,
+    question                TEXT            NOT NULL,
+    video_s3_key            VARCHAR(500),
+    snapshot_s3_key         VARCHAR(500),
+    face_match_confidence   DOUBLE PRECISION,
+    face_match_result       VARCHAR(20),
+    video_match_result      VARCHAR(20),
+    video_match_confidence  DOUBLE PRECISION,
+    audio_present           BOOLEAN         DEFAULT FALSE,
+    overall_result          VARCHAR(20),
+    overall_confidence      DOUBLE PRECISION,
+    ai_analysis_details     TEXT,
+    created_at              TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_identity_verifications_candidate ON identity_verifications(candidate_id);
+CREATE INDEX idx_identity_verifications_round ON identity_verifications(candidate_id, round_number);
+
+-- ============================================================
+-- 8. CANDIDATE_ASSESSMENTS TABLE
+-- ============================================================
+CREATE TABLE candidate_assessments (
+    id                  BIGSERIAL       PRIMARY KEY,
+    candidate_id        BIGINT          NOT NULL REFERENCES candidate_applications(id) ON DELETE CASCADE,
+    questions_json      JSONB           NOT NULL,
+    status              VARCHAR(20)     NOT NULL DEFAULT 'GENERATED',
+    total_score         INTEGER,
+    max_score           INTEGER,
+    evaluation_json     JSONB,
+    time_limit_minutes  INTEGER         NOT NULL DEFAULT 45,
+    started_at          TIMESTAMP,
+    submitted_at        TIMESTAMP,
+    created_at          TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_candidate_assessments_candidate ON candidate_assessments(candidate_id);
+CREATE INDEX idx_candidate_assessments_status ON candidate_assessments(status);
+CREATE INDEX idx_candidate_assessments_candidate_created ON candidate_assessments(candidate_id, created_at DESC);
+
+-- ============================================================
+-- 9. CANDIDATE_ANSWERS TABLE
+-- ============================================================
+CREATE TABLE candidate_answers (
+    id                  BIGSERIAL       PRIMARY KEY,
+    assessment_id       BIGINT          NOT NULL REFERENCES candidate_assessments(id) ON DELETE CASCADE,
+    question_id         INTEGER         NOT NULL,
+    question_type       VARCHAR(20)     NOT NULL,
+    candidate_answer    TEXT
+);
+
+CREATE INDEX idx_candidate_answers_assessment ON candidate_answers(assessment_id);
+CREATE INDEX idx_candidate_answers_assessment_question ON candidate_answers(assessment_id, question_id);

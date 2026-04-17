@@ -154,6 +154,7 @@ const CameraCapture = ({ token, username, photoUrl, onPhotoUpdated }: CameraCapt
             autoPlay
             playsInline
             muted
+            aria-label="Camera preview for profile photo"
             style={{ display: 'block', width: 320, height: 240, objectFit: 'cover' }}
           />
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1 }}>
@@ -165,7 +166,7 @@ const CameraCapture = ({ token, username, photoUrl, onPhotoUpdated }: CameraCapt
             >
               Capture
             </Button>
-            <IconButton onClick={stopCamera} sx={{ color: '#e74c3c' }}>
+            <IconButton onClick={stopCamera} aria-label="Close camera" sx={{ color: '#e74c3c' }}>
               <CloseIcon />
             </IconButton>
           </Box>
@@ -176,12 +177,12 @@ const CameraCapture = ({ token, username, photoUrl, onPhotoUpdated }: CameraCapt
       {capturedImage && (
         <Box sx={{ textAlign: 'center' }}>
           <Box sx={{ borderRadius: 2, overflow: 'hidden', border: '2px solid #27ae60', display: 'inline-block' }}>
-            <img src={capturedImage} alt="Captured" style={{ width: 320, height: 240, objectFit: 'cover', display: 'block' }} />
+            <img src={capturedImage} alt="Your captured profile photo preview" style={{ width: 320, height: 240, objectFit: 'cover', display: 'block' }} />
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1 }}>
             <Button
               variant="contained"
-              startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : <CheckCircle />}
+              startIcon={uploading ? <CircularProgress size={16} color="inherit" aria-label="Uploading photo" /> : <CheckCircle />}
               onClick={uploadPhoto}
               disabled={uploading}
               sx={{ background: '#27ae60', textTransform: 'none', '&:hover': { background: '#229954' } }}

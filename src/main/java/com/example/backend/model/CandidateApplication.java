@@ -57,6 +57,18 @@ public class CandidateApplication {
     @Column(name = "video_s3_key", length = 500)
     private String videoS3Key;
 
+    @Column(name = "selection_status", length = 20)
+    private String selectionStatus = "PENDING";
+
+    @Column(name = "selection_notes", columnDefinition = "TEXT")
+    private String selectionNotes;
+
+    @Column(name = "selected_by", length = 50)
+    private String selectedBy;
+
+    @Column(name = "selected_at")
+    private Instant selectedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -122,6 +134,18 @@ public class CandidateApplication {
     public void setVideoS3Key(String videoS3Key) { this.videoS3Key = videoS3Key; }
 
     public Instant getCreatedAt() { return createdAt; }
+
+    public String getSelectionStatus() { return selectionStatus; }
+    public void setSelectionStatus(String selectionStatus) { this.selectionStatus = selectionStatus; }
+
+    public String getSelectionNotes() { return selectionNotes; }
+    public void setSelectionNotes(String selectionNotes) { this.selectionNotes = selectionNotes; }
+
+    public String getSelectedBy() { return selectedBy; }
+    public void setSelectedBy(String selectedBy) { this.selectedBy = selectedBy; }
+
+    public Instant getSelectedAt() { return selectedAt; }
+    public void setSelectedAt(Instant selectedAt) { this.selectedAt = selectedAt; }
 
     public Set<TechStack> getTechStacks() { return techStacks; }
     public void setTechStacks(Set<TechStack> techStacks) { this.techStacks = techStacks; }

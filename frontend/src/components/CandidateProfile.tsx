@@ -16,7 +16,8 @@ import {
   CircularProgress,
   Alert,
   Divider,
-  IconButton
+  IconButton,
+  TextField
 } from '@mui/material';
 import {
   ArrowBack,
@@ -29,7 +30,11 @@ import {
   Description,
   PhotoCamera,
   Videocam,
-  Code
+  Code,
+  VerifiedUser,
+  ThumbUp,
+  ThumbDown,
+  HowToReg
 } from '@mui/icons-material';
 
 interface TechStack {
@@ -56,6 +61,22 @@ interface CandidateDetail {
   pancardUrl?: string;
   photoUrl?: string;
   videoUrl?: string;
+  selectionStatus?: string;
+  selectionNotes?: string;
+  selectedBy?: string;
+  selectedAt?: string;
+}
+
+interface VerificationRecord {
+  id: number;
+  roundNumber: number;
+  question: string;
+  faceMatchResult: string;
+  faceMatchConfidence: number;
+  aiAnalysisDetails: string;
+  createdAt: string;
+  videoUrl?: string;
+  snapshotUrl?: string;
 }
 
 const CandidateProfile = () => {
@@ -64,10 +85,19 @@ const CandidateProfile = () => {
   const [candidate, setCandidate] = useState<CandidateDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [verifications, setVerifications] = useState<VerificationRecord[]>([]);
+  const [assessmentId, setAssessmentId] = useState<number | null>(null);
+  const [assessmentStatus, setAssessmentStatus] = useState<string | null>(null);
+  const [assessmentScore, setAssessmentScore] = useState<number | null>(null);
+  const [assessmentMaxScore, setAssessmentMaxScore] = useState<number | null>(null);
+  const [selectionStatus, setSelectionStatus] = useState<string>('PENDING');
+  const [selectionNotes, setSelectionNotes] = useState('');
+  const [selectionLoading, setSelectionLoading] = useState(false);
+  const [selectionSuccess, setSelectionSuccess] = useState('');
   const token = localStorage.getItem('token');
 
   useEffect(() => {
-    const role = localStorage.getItem('role');
+    const role = localStorage.getItem('role') || localStorage.getItem('userRole');
     if (role !== 'HR' && role !== 'PRACTICE') {
       navigate('/dashboard');
       return;
@@ -76,7 +106,25 @@ const CandidateProfile = () => {
     axios.get(`/api/candidates/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-      .then(res => setCandidate(res.data))
+      .then(res => {
+        setCandidate(res.data);
+        if (res.data.selectionStatus) {
+          setSelectionStatus(res.data.selectionStatus);
+          setSelectionNotes(res.data.selectionNotes || '');
+        }
+        // Fetch identity verification results
+        axios.get(`/api/identity-verification/${id}/results`)
+          .then(vRes => {
+            setVerifications(vRes.data.verifications || []);
+            if (vRes.data.assessmentId) {
+              setAssessmentId(vRes.data.assessmentId);
+              setAssessmentStatus(vRes.data.assessmentStatus);
+              setAssessmentScore(vRes.data.assessmentScore ?? null);
+              setAssessmentMaxScore(vRes.data.assessmentMaxScore ?? null);
+            }
+          })
+          .catch(() => { /* ignore if no verifications */ });
+      })
       .catch(err => {
         if (err.response?.status === 401 || err.response?.status === 403) {
           navigate('/login');
@@ -101,10 +149,41 @@ const CandidateProfile = () => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
   };
 
+  const handleSelection = async (status: 'SELECTED' | 'NOT_SELECTED') => {
+    setSelectionLoading(true);
+    setSelectionSuccess('');
+    try {
+      await axios.put(`/api/candidates/${id}/selection`, {
+        selectionStatus: status,
+        selectionNotes
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSelectionStatus(status);
+      setSelectionSuccess(`Candidate marked as ${status === 'SELECTED' ? 'Selected' : 'Not Selected'}`);
+      if (status === 'SELECTED' && candidate) {
+        setTimeout(() => {
+          navigate('/send-email', {
+            state: {
+              candidateId: Number(id),
+              candidateEmail: candidate.email,
+              candidateName: fullName,
+              candidateTechStacks: candidate.techStacks.map(ts => ts.name)
+            }
+          });
+        }, 1000);
+      }
+    } catch {
+      setSelectionSuccess('');
+    } finally {
+      setSelectionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <CircularProgress />
+        <CircularProgress aria-label="Loading candidate profile" />
       </Box>
     );
   }
@@ -122,7 +201,7 @@ const CandidateProfile = () => {
     <Box sx={{ background: '#f5f7fa', minHeight: '100vh' }}>
       <AppBar position="sticky" sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <Toolbar>
-          <IconButton edge="start" color="inherit" onClick={() => navigate('/dashboard')} sx={{ mr: 1 }}>
+          <IconButton edge="start" color="inherit" aria-label="Back to dashboard" onClick={() => navigate('/dashboard')} sx={{ mr: 1 }}>
             <ArrowBack />
           </IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
@@ -138,7 +217,7 @@ const CandidateProfile = () => {
             <Box
               component="img"
               src={candidate.photoUrl}
-              alt={fullName}
+              alt={`Profile photo of ${fullName}`}
               sx={{ width: 100, height: 100, borderRadius: '50%', objectFit: 'cover', border: '3px solid #667eea' }}
             />
           ) : (
@@ -166,7 +245,7 @@ const CandidateProfile = () => {
             <Card elevation={0}>
               <CardContent>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Person sx={{ color: '#667eea' }} /> Personal Information
+                  <Person aria-hidden="true" sx={{ color: '#667eea' }} /> Personal Information
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <InfoRow label="First Name" value={candidate.firstName} />
@@ -182,7 +261,7 @@ const CandidateProfile = () => {
             <Card elevation={0}>
               <CardContent>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Home sx={{ color: '#667eea' }} /> Address
+                  <Home aria-hidden="true" sx={{ color: '#667eea' }} /> Address
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <InfoRow label="Current Address" value={candidate.currentAddress} />
@@ -196,7 +275,7 @@ const CandidateProfile = () => {
             <Card elevation={0}>
               <CardContent>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Work sx={{ color: '#667eea' }} /> Work Experience
+                  <Work aria-hidden="true" sx={{ color: '#667eea' }} /> Work Experience
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <InfoRow label="Experience" value={candidate.workExperience || '—'} />
@@ -227,7 +306,7 @@ const CandidateProfile = () => {
             <Card elevation={0}>
               <CardContent>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Code sx={{ color: '#667eea' }} /> Tech Stacks
+                  <Code aria-hidden="true" sx={{ color: '#667eea' }} /> Tech Stacks
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 {candidate.techStacks.length > 0 ? (
@@ -249,7 +328,7 @@ const CandidateProfile = () => {
             <Card elevation={0}>
               <CardContent>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Description sx={{ color: '#667eea' }} /> Documents
+                  <Description aria-hidden="true" sx={{ color: '#667eea' }} /> Documents
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -279,7 +358,7 @@ const CandidateProfile = () => {
             <Card elevation={0}>
               <CardContent>
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <PhotoCamera sx={{ color: '#667eea' }} /> Media
+                  <PhotoCamera aria-hidden="true" sx={{ color: '#667eea' }} /> Media
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 {candidate.photoUrl && (
@@ -288,7 +367,7 @@ const CandidateProfile = () => {
                     <Box
                       component="img"
                       src={candidate.photoUrl}
-                      alt="Candidate photo"
+                      alt={`Photo of ${fullName}`}
                       sx={{ maxWidth: '100%', maxHeight: 250, borderRadius: 2, objectFit: 'contain' }}
                     />
                   </Box>
@@ -302,11 +381,244 @@ const CandidateProfile = () => {
                       component="video"
                       controls
                       src={candidate.videoUrl}
+                      aria-label={`Video introduction by ${fullName}`}
                       sx={{ maxWidth: '100%', borderRadius: 2 }}
                     />
                   </Box>
                 ) : (
                   <Typography variant="body2" sx={{ color: '#999' }}>No video uploaded</Typography>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Identity Verification Results */}
+          {verifications.length > 0 && (
+            <Grid item xs={12}>
+              <Card elevation={0}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <VerifiedUser aria-hidden="true" sx={{ color: '#667eea' }} /> Identity Verification History
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  {verifications.map(v => (
+                    <Paper key={v.id} elevation={0} sx={{
+                      p: 2, mb: 2, borderRadius: 2,
+                      border: `1px solid ${v.faceMatchResult === 'MATCH' ? '#27ae60' : v.faceMatchResult === 'MISMATCH' ? '#e74c3c' : '#f39c12'}`,
+                      background: v.faceMatchResult === 'MATCH' ? '#f0fff4' : v.faceMatchResult === 'MISMATCH' ? '#fff5f5' : '#fffbf0'
+                    }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          Round {v.roundNumber}
+                        </Typography>
+                        <Chip
+                          label={v.faceMatchResult}
+                          size="small"
+                          sx={{
+                            fontWeight: 700,
+                            color: 'white',
+                            backgroundColor: v.faceMatchResult === 'MATCH' ? '#27ae60' : v.faceMatchResult === 'MISMATCH' ? '#e74c3c' : '#f39c12'
+                          }}
+                        />
+                      </Box>
+                      <Typography variant="body2" sx={{ color: '#555', mb: 0.5 }}>
+                        <strong>Question:</strong> {v.question}
+                      </Typography>
+                      {v.faceMatchConfidence > 0 && (
+                        <Typography variant="body2" sx={{ color: '#555', mb: 0.5 }}>
+                          <strong>Confidence:</strong> {v.faceMatchConfidence.toFixed(1)}%
+                        </Typography>
+                      )}
+                      <Typography variant="body2" sx={{ color: '#777' }}>
+                        {v.aiAnalysisDetails}
+                      </Typography>
+                      {v.videoUrl && (
+                        <Box sx={{ mt: 1 }}>
+                          <Box
+                            component="video"
+                            controls
+                            src={v.videoUrl}
+                            aria-label={`Verification video for round ${v.roundNumber}`}
+                            sx={{ maxWidth: '100%', maxHeight: 200, borderRadius: 2 }}
+                          />
+                        </Box>
+                      )}
+                      <Typography variant="caption" sx={{ color: '#999', mt: 1, display: 'block' }}>
+                        {new Date(v.createdAt).toLocaleString()}
+                      </Typography>
+                    </Paper>
+                  ))}
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
+
+          {/* Assessment Report */}
+          {assessmentId && (
+            <Grid item xs={12}>
+              <Card elevation={0}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Work aria-hidden="true" sx={{ color: '#764ba2' }} /> Assessment Report
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <Paper elevation={0} sx={{
+                    p: 3, borderRadius: 2,
+                    border: `1px solid ${assessmentStatus === 'EVALUATED' ? '#667eea' : '#f39c12'}`,
+                    background: assessmentStatus === 'EVALUATED' ? '#f0f4ff' : '#fffbf0'
+                  }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        Technical Assessment
+                      </Typography>
+                      <Chip
+                        label={assessmentStatus || 'PENDING'}
+                        size="small"
+                        sx={{
+                          fontWeight: 700,
+                          color: 'white',
+                          backgroundColor: assessmentStatus === 'EVALUATED' ? '#27ae60' :
+                            assessmentStatus === 'SUBMITTED' ? '#2980b9' :
+                              assessmentStatus === 'IN_PROGRESS' ? '#f39c12' : '#95a5a6'
+                        }}
+                      />
+                    </Box>
+                    {assessmentScore != null && assessmentMaxScore != null && (
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="h4" sx={{ fontWeight: 700, color: '#667eea' }}>
+                          {assessmentScore} / {assessmentMaxScore}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#777' }}>
+                          Score: {((assessmentScore / assessmentMaxScore) * 100).toFixed(1)}%
+                        </Typography>
+                      </Box>
+                    )}
+                    <Button
+                      variant="contained"
+                      onClick={() => navigate(`/assessment-report/${assessmentId}`)}
+                      sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        '&:hover': { background: 'linear-gradient(135deg, #5a6fd6 0%, #6a4292 100%)' }
+                      }}
+                    >
+                      View Detailed Report
+                    </Button>
+                  </Paper>
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
+
+          {/* Selection Decision */}
+          <Grid item xs={12}>
+            <Card elevation={0}>
+              <CardContent>
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <HowToReg aria-hidden="true" sx={{ color: '#667eea' }} /> Selection Decision
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+
+                {selectionStatus !== 'PENDING' ? (
+                  <Paper elevation={0} sx={{
+                    p: 3, borderRadius: 2,
+                    border: `1px solid ${selectionStatus === 'SELECTED' ? '#27ae60' : '#e74c3c'}`,
+                    background: selectionStatus === 'SELECTED' ? '#f0fff4' : '#fff5f5'
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                      {selectionStatus === 'SELECTED' ? (
+                        <ThumbUp sx={{ color: '#27ae60', fontSize: 32 }} />
+                      ) : (
+                        <ThumbDown sx={{ color: '#e74c3c', fontSize: 32 }} />
+                      )}
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: selectionStatus === 'SELECTED' ? '#27ae60' : '#e74c3c' }}>
+                        {selectionStatus === 'SELECTED' ? 'Selected for Next Round' : 'Not Selected'}
+                      </Typography>
+                    </Box>
+                    {candidate?.selectedBy && (
+                      <Typography variant="body2" sx={{ color: '#777', mb: 0.5 }}>
+                        Decision by: <strong>{candidate.selectedBy}</strong>
+                        {candidate.selectedAt && ` on ${formatDate(candidate.selectedAt)}`}
+                      </Typography>
+                    )}
+                    {selectionNotes && (
+                      <Typography variant="body2" sx={{ color: '#555', mt: 1 }}>
+                        <strong>Notes:</strong> {selectionNotes}
+                      </Typography>
+                    )}
+                    {selectionStatus === 'SELECTED' && (
+                      <Button
+                        variant="contained"
+                        onClick={() => navigate('/send-email', {
+                          state: {
+                            candidateId: Number(id),
+                            candidateEmail: candidate?.email,
+                            candidateName: fullName,
+                            candidateTechStacks: candidate?.techStacks.map(ts => ts.name)
+                          }
+                        })}
+                        startIcon={<Email />}
+                        sx={{
+                          mt: 2,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          '&:hover': { background: 'linear-gradient(135deg, #5a6fd6 0%, #6a4292 100%)' }
+                        }}
+                      >
+                        Send Selection Email
+                      </Button>
+                    )}
+                  </Paper>
+                ) : (
+                  <Box>
+                    {selectionSuccess && (
+                      <Alert severity="success" sx={{ mb: 2 }}>{selectionSuccess}</Alert>
+                    )}
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      label="Selection Notes (optional)"
+                      value={selectionNotes}
+                      onChange={(e) => setSelectionNotes(e.target.value)}
+                      sx={{ mb: 3 }}
+                      placeholder="Add any notes about the decision..."
+                    />
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Button
+                        variant="contained"
+                        size="large"
+                        startIcon={selectionLoading ? <CircularProgress size={20} color="inherit" /> : <ThumbUp />}
+                        disabled={selectionLoading}
+                        onClick={() => handleSelection('SELECTED')}
+                        sx={{
+                          flex: 1,
+                          py: 1.5,
+                          background: '#27ae60',
+                          fontWeight: 700,
+                          fontSize: 16,
+                          '&:hover': { background: '#229954' }
+                        }}
+                      >
+                        Select for Next Round
+                      </Button>
+                      <Button
+                        variant="contained"
+                        size="large"
+                        startIcon={selectionLoading ? <CircularProgress size={20} color="inherit" /> : <ThumbDown />}
+                        disabled={selectionLoading}
+                        onClick={() => handleSelection('NOT_SELECTED')}
+                        sx={{
+                          flex: 1,
+                          py: 1.5,
+                          background: '#e74c3c',
+                          fontWeight: 700,
+                          fontSize: 16,
+                          '&:hover': { background: '#c0392b' }
+                        }}
+                      >
+                        Not Selected
+                      </Button>
+                    </Box>
+                  </Box>
                 )}
               </CardContent>
             </Card>

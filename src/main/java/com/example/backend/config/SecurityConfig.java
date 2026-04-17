@@ -45,11 +45,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/photo/{username}").permitAll()
                 .requestMatchers("/api/candidate-registration/**").permitAll()
+                .requestMatchers("/api/identity-verification/**").permitAll()
+                .requestMatchers("/api/assessment/**").permitAll()
                 .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/vite.svg").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/login", "/register", "/dashboard", "/send-email",
                         "/candidate-register", "/candidate-photo/**", "/candidate-video/**",
-                        "/candidates", "/candidate-profile/**").permitAll()
+                        "/candidates", "/candidate-profile/**", "/identity-verification/**",
+                        "/candidate-assessment/**", "/assessment-report/**").permitAll()
                 .anyRequest().authenticated())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
